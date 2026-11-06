@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Lokale Transcriptie</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #19322c;
+      --muted: #64736d;
+      --line: #dce5df;
+      --paper: #fff;
+      --canvas: #f3f6f2;
+      --green: #245c48;
+      --green-dark: #194533;
+      --mint: #e8f2eb;
+      --amber: #fff4d8;
+      --red: #9e3636;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-inner, main {
+      width: min(1080px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .header-inner {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 19px;
+      font-weight: 720;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 12px;
+      color: white;
+      background: var(--green);
+    }
+
+    .local-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      background: #d19b35;
+      border-radius: 50%;
+    }
+
+    .status-dot.ready { background: #36825b; }
+    .status-dot.problem { background: #bd4d44; }
+
+    main { padding: 38px 0 64px; }
+
+    .intro { margin-bottom: 24px; }
+    h1 { margin: 0 0 7px; font-size: clamp(25px, 4vw, 34px); letter-spacing: -0.035em; }
+    .intro p { margin: 0; color: var(--muted); max-width: 720px; }
+
+    .privacy {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      margin: 20px 0;
+      border: 1px solid #d5e5d7;
+      border-radius: 12px;
+      background: #eef6ee;
+      color: #355b42;
+      font-size: 13px;
+    }
+
+    .privacy strong { color: #234a31; }
+    .privacy-icon { font-size: 17px; }
+
+    .card {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      margin-top: 18px;
+      background: var(--paper);
+      box-shadow: 0 3px 12px rgb(34 54 42 / 4%);
+    }
+
+    .step-heading {
+      display: flex;
+      align-items: flex-start;
+      gap: 13px;
+      margin-bottom: 18px;
+    }
+
+    .step-number {
+      display: grid;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--mint);
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    h2 { margin: 0; font-size: 18px; letter-spacing: -0.015em; }
+    .step-heading p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .file-field { flex: 1 1 340px; }
+    .controls > button { margin-top: 26px; }
+    label { display: block; margin-bottom: 6px; font-weight: 620; font-size: 13px; }
+    input[type="file"], select {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 11px;
+      border: 1px solid #cbd7cf;
+      border-radius: 9px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    select { cursor: pointer; }
+    .language-field { flex: 0 1 210px; }
+
+    button {
+      min-height: 42px;
+      padding: 9px 15px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: var(--green);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 650;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+
+    button:hover:not(:disabled) { background: var(--green-dark); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+
+    button.secondary {
+      border-color: var(--line);
+      color: var(--ink);
+      background: white;
+    }
+
+    button.secondary:hover:not(:disabled) { background: #f4f7f4; }
+
+    .file-name {
+      display: none;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .progress-panel {
+      display: none;
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f4f7f4;
+    }
+
+    .progress-panel.visible { display: block; }
+
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .progress-message { font-weight: 620; }
+    .progress-value { color: var(--muted); white-space: nowrap; }
+
+    .progress-track {
+      height: 7px;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #e0e8e2;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: #438360;
+      transition: width 250ms ease;
+    }
+
+    .progress-bar.indeterminate {
+      width: 38% !important;
+      animation: progress-slide 1.4s ease-in-out infinite alternate;
+    }
+
+    .live-transcript {
+      display: none;
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+    }
+
+    .live-transcript.visible { display: block; }
+    .live-transcript strong { font-size: 13px; }
+    .live-transcript p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .live-transcript-text {
+      max-height: 190px;
+      min-height: 44px;
+      margin: 10px 0 0;
+      overflow: auto;
+      color: #43554c;
+      font: inherit;
+      font-size: 13px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @keyframes progress-slide {
+      from { transform: translateX(0); }
+      to { transform: translateX(165%); }
+    }
+
+    .notice {
+      display: none;
+      padding: 13px 15px;
+      margin-top: 15px;
+      border-radius: 9px;
+      background: var(--amber);
+      color: #6a5019;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 13px;
+    }
+
+    .notice.visible { display: block; }
+    .notice.error { background: #fff0ef; color: var(--red); }
+
+    .transcript-card, .summary-card { display: none; }
+    .transcript-card.visible, .summary-card.visible { display: block; }
+
+    .result-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .result-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .caption-list {
+      max-height: 560px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .caption {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 14px;
+      padding: 11px 13px;
+      border-bottom: 1px solid #edf1ed;
+      font-size: 14px;
+    }
+
+    .caption:last-child { border-bottom: 0; }
+    .caption:nth-child(even) { background: #fafcf9; }
+
+    .caption time {
+      padding-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      width: max-content;
+    }
+
+    .caption-text {
+      min-height: 22px;
+      border-radius: 4px;
+      outline: none;
+      white-space: pre-wrap;
+    }
+
+    .caption-text:focus {
+      background: #fffbe7;
+      box-shadow: 0 0 0 3px #f4e7ac;
+    }
+
+    .summary-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 12px;
+      margin-top: 19px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .summary-style { flex: 1 1 250px; }
+    .hint { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+
+    .summary-output {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      border: 1px solid #dce8df;
+      border-radius: 12px;
+      background: #fbfdfb;
+    }
+
+    .summary-output.visible { display: block; }
+    .summary-output h3 { margin: 0 0 10px; font-size: 16px; }
+    .summary-text { overflow-wrap: anywhere; font-size: 14px; }
+    .summary-text > :first-child { margin-top: 0; }
+    .summary-text > :last-child { margin-bottom: 0; }
+    .summary-text p { margin: 0 0 12px; }
+    .summary-text h2, .summary-text h3, .summary-text h4 { margin: 18px 0 7px; }
+    .summary-text ul, .summary-text ol { margin: 0 0 12px; padding-left: 24px; }
+    .summary-text li + li { margin-top: 4px; }
+    .summary-text code { padding: 1px 4px; border-radius: 4px; background: #eef2ee; font-family: ui-monospace, monospace; }
+    .summary-save { margin-top: 14px; }
+
+    footer {
+      margin-top: 22px;
+      color: #728078;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 800px) {
+      .controls > button { margin-top: 0; }
+    }
+
+    @media (max-width: 650px) {
+      .header-inner, main { width: min(100% - 24px, 1080px); }
+      .header-inner { min-height: 65px; }
+      .brand { font-size: 16px; }
+      .local-status { font-size: 11px; }
+      main { padding-top: 27px; }
+      .card { padding: 17px; }
+      .caption { grid-template-columns: 1fr; gap: 4px; padding: 10px 11px; }
+      .caption time { font-size: 11px; }
+      .result-head { flex-direction: column; }
+      .controls > button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand"><span class="brand-mark">◉</span> Lokale Transcriptie</div>
+      <div class="local-status" aria-live="polite">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Lokale modellen controleren…</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1>Van opname naar tekst</h1>
+      <p>Kies een audio- of videobestand. Bekijk en bewerk daarna de transcriptie, sla ondertiteling op of maak een samenvatting.</p>
+    </section>
+
+    <div class="privacy">
+      <span class="privacy-icon" aria-hidden="true">🔒</span>
+      <div><strong>Privé op deze Mac.</strong> Whisper en Qwen verwerken je opname en tekst lokaal. De opname wordt na de transcriptie uit tijdelijke opslag verwijderd; er wordt niets naar een online AI-dienst gestuurd.</div>
+    </div>
+
+    <section class="card" aria-labelledby="step-title">
+      <div class="step-heading">
+        <span class="step-number">1</span>
+        <div>
+          <h2 id="step-title">Kies een opname</h2>
+          <p>Gangbare audio- en videoformaten worden ondersteund.</p>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="file-field">
+          <label for="media-file">Audio- of videobestand</label>
+          <input id="media-file" type="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.mp4,.mov,.mkv,.webm">
+          <div class="file-name" id="file-name"></div>
+        </div>
+        <div class="language-field">
+          <label for="language">Taal van de opname</label>
+          <select id="language">
+            <option value="nl" selected>Nederlands</option>
+            <option value="auto">Automatisch herkennen</option>
+          </select>
+        </div>
+        <button id="transcribe-button" disabled>Start transcriptie</button>
+      </div>
+      <div class="progress-panel" id="transcribe-progress" aria-live="polite">
+        <div class="progress-top">
+          <span class="progress-message" id="transcribe-message"></span>
+          <span class="progress-value" id="transcribe-value"></span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" id="transcribe-bar"></div></div>
+      </div>
+      <div class="live-transcript" id="live-transcript" aria-live="polite">
+        <strong>Herkende tekst tot nu toe</strong>
+        <p>Dit is een voorlopige versie. De volledige transcriptie verschijnt hierna.</p>
+        <pre class="live-transcript-text" id="live-transcript-text"></pre>
+      </div>
+      <div class="notice" id="transcribe-notice" role="status"></div>
+    </section>
+
+    <section class="card transcript-card" id="transcript-card" aria-labelledby="transcript-title">
+      <div class="result-head">
+        <div>
+          <div class="step-heading">
+            <span class="step-number">2</span>
+            <div>
+              <h2 id="transcript-title">Controleer de transcriptie</h2>
+              <p id="transcript-meta">Klik op tekst om die te bewerken. Je aanpassingen tellen mee voor ondertiteling en samenvatting.</p>
+            </div>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="secondary" id="save-transcript-button">Bewaar transcript als HTML</button>
+          <button class="secondary" id="save-srt-button">Bewaar ondertiteling (.srt)</button>
+          <button class="secondary" id="save-vtt-button">Bewaar ondertiteling (.vtt)</button>
+        </div>
+      </div>
+      <div class="caption-list" id="caption-list"></div>
+
+      <div class="summary-controls">
+        <div class="summary-style">
+          <label for="summary-style">Wat voor samenvatting wil je?</label>
+          <select id="summary-style">
+            <option value="general" selected>Algemene samenvatting</option>
+            <option value="meeting">Duidelijk vergaderverslag</option>
+            <option value="session">Sessieverslag</option>
+          </select>
+        </div>
+        <button id="summarize-button">Maak samenvatting</button>
+      </div>
+      <p class="hint">Een lange opname wordt automatisch in stukken verwerkt. Dit kan enkele minuten duren.</p>
+    </section>
+
+    <section class="card summary-card" id="summary-card" aria-labelledby="summary-title">
+      <div class="result-head">
+        <div class="step-heading">
+          <span class="step-number">3</span>
+          <div>
+            <h2 id="summary-title">Samenvatting</h2>
+            <p>Controleer de tekst; een lokaal model kan details verkeerd begrijpen of weglaten.</p>
+          </div>
+        </div>
+      </div>
+      <div class="progress-panel" id="summary-progress" aria-live="polite">
+        <div class="progress-top">
+          <span class="progress-message" id="summary-message"></span>
+          <span class="progress-value" id="summary-value"></span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" id="summary-bar"></div></div>
+      </div>
+      <div class="notice" id="summary-notice" role="status"></div>
+      <div class="summary-output" id="summary-output">
+        <h3 id="summary-output-title">Samenvatting</h3>
+        <div class="summary-text" id="summary-text"></div>
+        <div class="summary-save">
+          <button id="save-summary-button">Bewaar samenvatting als HTML</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>Alleen toegankelijk op deze Mac · Whisper voor transcriptie · Qwen voor samenvatting</footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fileInput = $("media-file");
+    const transcribeButton = $("transcribe-button");
+    const summarizeButton = $("summarize-button");
+    let segments = [];
+    let baseName = "transcriptie";
+
+    function showNotice(id, message, error = false) {
+      const notice = $(id);
+      notice.textContent = message;
+      notice.classList.toggle("error", error);
+      notice.classList.add("visible");
+    }
+
+    function clearNotice(id) {
+      $(id).textContent = "";
+      $(id).classList.remove("visible", "error");
+    }
+
+    function setProgress(prefix, message, progress) {
+      $(`${prefix}-progress`).classList.add("visible");
+      $(`${prefix}-message`).textContent = message;
+      const hasProgress = Number.isFinite(progress);
+      $(`${prefix}-value`).textContent = hasProgress ? `${progress}%` : "";
+      const bar = $(`${prefix}-bar`);
+      bar.classList.toggle("indeterminate", !hasProgress);
+      bar.style.width = hasProgress ? `${Math.max(0, Math.min(100, progress))}%` : "38%";
+    }
+
+    function safeBaseName(name) {
+      return name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]/g, "-") || "transcriptie";
+    }
+
+    function formatTimestamp(seconds, decimalSeparator = ",") {
+      const milliseconds = Math.max(0, Math.round(seconds * 1000));
+      const hours = Math.floor(milliseconds / 3600000);
+      const minutes = Math.floor((milliseconds % 3600000) / 60000);
+      const wholeSeconds = Math.floor((milliseconds % 60000) / 1000);
+      const ms = milliseconds % 1000;
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(wholeSeconds).padStart(2, "0")}${decimalSeparator}${String(ms).padStart(3, "0")}`;
+    }
+
+    function currentSegments() {
+      return [...$("caption-list").querySelectorAll(".caption")].map((row) => ({
+        start: segments[Number(row.dataset.index)].start,
+        end: segments[Number(row.dataset.index)].end,
+        text: row.querySelector(".caption-text").innerText.trim(),
+      })).filter((segment) => segment.text);
+    }
+
+    function renderSegments(items) {
+      segments = items;
+      const list = $("caption-list");
+      list.replaceChildren();
+      const fragment = document.createDocumentFragment();
+      items.forEach((segment, index) => {
+        const row = document.createElement("div");
+        row.className = "caption";
+        row.dataset.index = String(index);
+        const time = document.createElement("time");
+        time.textContent = `${formatTimestamp(segment.start)} – ${formatTimestamp(segment.end)}`;
+        const text = document.createElement("div");
+        text.className = "caption-text";
+        text.contentEditable = "true";
+        text.spellcheck = true;
+        text.textContent = segment.text;
+        row.append(time, text);
+        fragment.append(row);
+      });
+      list.append(fragment);
+    }
+
+    function makeTranscriptHtml(items) {
+      const rows = items.map((segment) =>
+        `<tr><td>${escapeHtml(formatTimestamp(segment.start))}</td><td>${escapeHtml(formatTimestamp(segment.end))}</td><td>${escapeHtml(segment.text)}</td></tr>`
+      ).join("\n");
+      return `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>${escapeHtml(baseName)} — transcript</title>
+<style>body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#20352c}h1{font-size:28px}table{width:100%;border-collapse:collapse}td{padding:9px 10px;border-bottom:1px solid #e4e9e5;vertical-align:top}td:first-child,td:nth-child(2){white-space:nowrap;color:#68756d;font-size:13px;font-variant-numeric:tabular-nums}tr:nth-child(even){background:#f7f9f7}</style>
+<body><h1>${escapeHtml(baseName)} — transcript</h1><table><thead><tr><th>Van</th><th>Tot</th><th>Tekst</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+    }
+
+    function renderInlineMarkdown(text) {
+      const tokens = /(\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|\*[^*\n]+\*|_[^_\n]+_)/g;
+      let html = "";
+      let cursor = 0;
+      for (const match of text.matchAll(tokens)) {
+        html += escapeHtml(text.slice(cursor, match.index));
+        const token = match[0];
+        const content = escapeHtml(token.slice(2, -2));
+        if (token.startsWith("**") || token.startsWith("__")) {
+          html += `<strong>${content}</strong>`;
+        } else if (token.startsWith("`")) {
+          html += `<code>${escapeHtml(token.slice(1, -1))}</code>`;
+        } else {
+          html += `<em>${escapeHtml(token.slice(1, -1))}</em>`;
+        }
+        cursor = match.index + token.length;
+      }
+      return html + escapeHtml(text.slice(cursor));
+    }
+
+    function renderMarkdown(markdown) {
+      const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+      const blocks = [];
+      let paragraph = [];
+      let listType = "";
+      let listItems = [];
+
+      function flushParagraph() {
+        if (paragraph.length) {
+          blocks.push(`<p>${paragraph.map(renderInlineMarkdown).join("<br>")}</p>`);
+          paragraph = [];
+        }
+      }
+
+      function flushList() {
+        if (listItems.length) {
+          blocks.push(`<${listType}>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</${listType}>`);
+          listItems = [];
+          listType = "";
+        }
+      }
+
+      for (const line of lines) {
+        const heading = line.match(/^\s{0,3}(#{1,4})\s+(.+?)\s*#*\s*$/);
+        const unordered = line.match(/^\s{0,3}[-*+]\s+(.+)$/);
+        const ordered = line.match(/^\s{0,3}\d+[.)]\s+(.+)$/);
+        if (heading) {
+          flushParagraph();
+          flushList();
+          const level = Math.min(heading[1].length + 1, 4);
+          blocks.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+        } else if (unordered || ordered) {
+          flushParagraph();
+          const nextListType = unordered ? "ul" : "ol";
+          if (listType && listType !== nextListType) flushList();
+          listType = nextListType;
+          listItems.push((unordered || ordered)[1]);
+        } else {
+          flushList();
+          if (line.trim()) paragraph.push(line);
+          else flushParagraph();
+        }
+      }
+      flushParagraph();
+      flushList();
+      return blocks.join("\n");
+    }
+
+    function toSrt(items) {
+      return items.map((segment, index) =>
+        `${index + 1}\n${formatTimestamp(segment.start)} --> ${formatTimestamp(segment.end)}\n${segment.text}`
+      ).join("\n\n") + "\n";
+    }
+
+    function toVtt(items) {
+      return "WEBVTT\n\n" + items.map((segment) =>
+        `${formatTimestamp(segment.start, ".")} --> ${formatTimestamp(segment.end, ".")}\n${segment.text}`
+      ).join("\n\n") + "\n";
+    }
+
+    async function saveTextFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "Bestand", accept: { [mimeType.split(";")[0]]: [`.${filename.split(".").pop()}`] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          return;
+        } catch (error) {
+          if (error.name === "AbortError") return;
+          throw error;
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function jsonRequest(url, options = {}) {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Er ging iets mis.");
+      return data;
+    }
+
+    async function monitorJob(jobId, prefix) {
+      while (true) {
+        const job = await jsonRequest(`/api/jobs/${encodeURIComponent(jobId)}`);
+        setProgress(
+          prefix,
+          job.message || "Bezig…",
+          typeof job.progress === "number" ? job.progress : null,
+        );
+        if (prefix === "transcribe" && typeof job.transcript_preview === "string") {
+          const preview = $("live-transcript-text");
+          preview.textContent =
+            job.transcript_preview || "Whisper herkent de eerste woorden; dit kan even duren.";
+          preview.scrollTop = preview.scrollHeight;
+        }
+        if (job.status === "error") throw new Error(job.message || "De verwerking is mislukt.");
+        if (job.status === "complete") return job;
+        await new Promise((resolve) => setTimeout(resolve, 1800));
+      }
+    }
+
+    async function checkStatus() {
+      const dot = $("status-dot");
+      const label = $("status-text");
+      try {
+        const status = await jsonRequest("/api/status");
+        const whisperReady = status.whisper_available;
+        const qwenReady = status.ollama_available && status.summary_model_available;
+        dot.classList.toggle("ready", whisperReady && qwenReady);
+        dot.classList.toggle("problem", !whisperReady || !qwenReady || !status.local_only);
+        if (!whisperReady) label.textContent = "Whisper niet gevonden";
+        else if (!qwenReady) label.textContent = "Lokaal Qwen-model niet beschikbaar";
+        else if (!status.local_only) label.textContent = "Controleer lokale Ollama-instelling";
+        else label.textContent = "Whisper en Qwen lokaal klaar";
+        summarizeButton.disabled = !qwenReady;
+      } catch {
+        dot.classList.add("problem");
+        label.textContent = "Kan lokale modellen niet controleren";
+        summarizeButton.disabled = true;
+      }
+    }
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      transcribeButton.disabled = !file;
+      $("file-name").style.display = file ? "block" : "none";
+      if (file) {
+        $("file-name").textContent = `${file.name} · ${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+        baseName = safeBaseName(file.name);
+      }
+    });
+
+    transcribeButton.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      transcribeButton.disabled = true;
+      $("transcript-card").classList.remove("visible");
+      $("summary-card").classList.remove("visible");
+      $("summary-output").classList.remove("visible");
+      clearNotice("transcribe-notice");
+      $("live-transcript").classList.add("visible");
+      $("live-transcript-text").textContent = "Whisper analyseert de opname. De herkende tekst verschijnt hier.";
+      setProgress("transcribe", "Opname lokaal verwerken…", null);
+      try {
+        const query = new URLSearchParams({
+          filename: file.name,
+          language: $("language").value,
+        });
+        const job = await new Promise((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open("POST", `/api/transcribe?${query}`);
+          request.setRequestHeader("Content-Type", "application/octet-stream");
+          request.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round(event.loaded / event.total * 100);
+              setProgress("transcribe", "Bestand lokaal naar Whisper sturen…", percent);
+            }
+          };
+          request.onload = () => {
+            let data;
+            try { data = JSON.parse(request.responseText); }
+            catch { reject(new Error("Ongeldig antwoord van de lokale app.")); return; }
+            if (request.status < 200 || request.status >= 300) {
+              reject(new Error(data.error || "Het bestand kon niet worden verwerkt."));
+              return;
+            }
+            resolve(data);
+          };
+          request.onerror = () => reject(new Error("De verbinding met de lokale app is verbroken."));
+          request.send(file);
+        });
+        const result = await monitorJob(job.job_id, "transcribe");
+        renderSegments(result.segments);
+        $("live-transcript").classList.remove("visible");
+        $("transcript-meta").textContent =
+          `${result.filename} · ${result.segments.length.toLocaleString("nl-NL")} tekstfragmenten · Klik op tekst om die te bewerken.`;
+        $("transcript-card").classList.add("visible");
+        $("summary-card").classList.add("visible");
+        $("transcript-card").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        showNotice("transcribe-notice", error.message, true);
+      } finally {
+        transcribeButton.disabled = false;
+      }
+    });
+
+    $("save-transcript-button").addEventListener("click", async () => {
+      try {
+        await saveTextFile(`${baseName}-transcript.html`, makeTranscriptHtml(currentSegments()), "text/html;charset=utf-8");
+      } catch (error) {
+        showNotice("transcribe-notice", `Opslaan is niet gelukt: ${error.message}`, true);
+      }
+    });
+
+    $("save-srt-button").addEventListener("click", async () => {
+      try {
+        await saveTextFile(`${baseName}.srt`, toSrt(currentSegments()), "text/plain;charset=utf-8");
+      } catch (error) {
+        showNotice("transcribe-notice", `Opslaan is niet gelukt: ${error.message}`, true);
+      }
+    });
+
+    $("save-vtt-button").addEventListener("click", async () => {
+      try {
+        await saveTextFile(`${baseName}.vtt`, toVtt(currentSegments()), "text/vtt;charset=utf-8");
+      } catch (error) {
+        showNotice("transcribe-notice", `Opslaan is niet gelukt: ${error.message}`, true);
+      }
+    });
+
+    summarizeButton.addEventListener("click", async () => {
+      const text = currentSegments().map((segment) => segment.text).join("\n");
+      if (!text.trim()) {
+        showNotice("summary-notice", "Er staat geen tekst in de transcriptie.", true);
+        return;
+      }
+      summarizeButton.disabled = true;
+      clearNotice("summary-notice");
+      $("summary-output").classList.remove("visible");
+      $("summary-card").classList.add("visible");
+      setProgress("summary", "Samenvatting voorbereiden…", null);
+      try {
+        const job = await jsonRequest("/api/summarize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, style: $("summary-style").value }),
+        });
+        const result = await monitorJob(job.job_id, "summary");
+        $("summary-text").innerHTML = renderMarkdown(result.summary);
+        $("summary-output-title").textContent = {
+          general: "Algemene samenvatting",
+          meeting: "Vergaderverslag",
+          session: "Sessieverslag",
+        }[$("summary-style").value];
+        $("summary-output").classList.add("visible");
+        $("summary-output").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        showNotice("summary-notice", error.message, true);
+      } finally {
+        summarizeButton.disabled = false;
+      }
+    });
+
+    $("save-summary-button").addEventListener("click", async () => {
+      const title = $("summary-output-title").textContent;
+      const body = $("summary-text").innerHTML;
+      const html = `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>${escapeHtml(baseName)} — ${escapeHtml(title)}</title>
+<style>body{font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:850px;margin:48px auto;padding:0 22px;color:#24372f}h1{font-size:28px;line-height:1.25;color:#204e3b}h2,h3,h4{margin:22px 0 8px}p,ul,ol{margin:0 0 14px}li+li{margin-top:4px}code{padding:1px 4px;border-radius:4px;background:#eef2ee;font-family:ui-monospace,monospace}</style>
+<body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(baseName)}</p><main>${body}</main></body></html>`;
+      try {
+        await saveTextFile(`${baseName}-samenvatting.html`, html, "text/html;charset=utf-8");
+      } catch (error) {
+        showNotice("summary-notice", `Opslaan is niet gelukt: ${error.message}`, true);
+      }
+    });
+
+    checkStatus();
+    setInterval(checkStatus, 15000);
+  </script>
+</body>
+</html>
