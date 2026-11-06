@@ -203,22 +203,70 @@ if [ "$SETUP_COMPLETE" = true ]; then
   echo "  - Ollama and models (check for updates)"
   echo ""
 else
-  if [ "$HOMEBREW_MISSING" = true ]; then
-    echo "Setup will:"
-    echo "  1. Install Homebrew (required for Ollama)"
-    echo "  2. Install Ollama"
-    echo "  3. Create Python virtual environment"
-    echo "  4. Install Python packages"
-    echo "  5. Download ML models (~7 GB, may take 10-30 minutes)"
-    echo ""
+  # New install - show detailed plan
+  echo "Installation Plan:"
+  echo ""
+  
+  # Check what's already there
+  OLLAMA_SIZE=0
+  if command -v ollama &> /dev/null; then
+    if ollama list 2>/dev/null | grep -q "qwen3:8b"; then
+      QWEN_INSTALLED=true
+      OLLAMA_SIZE=$(du -sh ~/.ollama 2>/dev/null | awk '{print $1}')
+      echo "  ✓ Qwen3:8b model already installed (${OLLAMA_SIZE})"
+    else
+      QWEN_INSTALLED=false
+      echo "  - Qwen3:8b model: needs download (~5 GB)"
+    fi
   else
-    echo "Setup will:"
-    echo "  1. Install Ollama (if not present)"
-    echo "  2. Create Python virtual environment"
-    echo "  3. Install Python packages"
-    echo "  4. Download ML models (~7 GB, may take 10-30 minutes)"
-    echo ""
+    QWEN_INSTALLED=false
+    echo "  - Ollama: needs install"
+    echo "  - Qwen3:8b model: needs download (~5 GB)"
   fi
+  
+  if [ -d ".venv" ]; then
+    echo "  ✓ Python venv already exists"
+  else
+    echo "  - Python venv: will create"
+  fi
+  
+  if [ "$HOMEBREW_MISSING" = true ]; then
+    echo "  - Homebrew: will install"
+  else
+    echo "  ✓ Homebrew already installed"
+  fi
+  
+  # Calculate and warn about storage
+  echo ""
+  OLLAMA_DIR="$HOME/.ollama"
+  if [ -d "$OLLAMA_DIR" ]; then
+    CURRENT_OLLAMA=$(du -sh "$OLLAMA_DIR" 2>/dev/null | awk '{print $1}' | grep -o '^[0-9.]*')
+  else
+    CURRENT_OLLAMA=0
+  fi
+  
+  TOTAL_NEEDED=7
+  if [ "$QWEN_INSTALLED" = false ]; then
+    TOTAL_NEEDED=7
+    echo "Storage Requirements:"
+    echo "  Current ~/.ollama: ~${CURRENT_OLLAMA}GB (or new)"
+    echo "  Qwen3:8b model: ~5 GB"
+    echo "  Python packages: ~0.5 GB"
+    echo "  Total needed: ~${TOTAL_NEEDED} GB"
+  else
+    echo "Storage:"
+    echo "  Qwen3:8b already installed (${OLLAMA_SIZE})"
+    echo "  Python packages: ~0.5 GB"
+  fi
+  
+  if [ "$AVAILABLE_SPACE" -lt "$TOTAL_NEEDED" ]; then
+    echo ""
+    warning "Available space: ${AVAILABLE_SPACE}GB (may be insufficient)"
+    echo "  Consider freeing up disk space before proceeding"
+  else
+    echo "  Available space: ${AVAILABLE_SPACE}GB ✓"
+  fi
+  echo ""
 fi
 
 read -r -p "Proceed? (y/n) " -n 1
@@ -247,7 +295,6 @@ echo ""
 
 # 2. Check/Install Homebrew (if needed)
 if ! command -v brew &> /dev/null; then
-  echo ""
   echo "Installing Homebrew (required for Ollama)..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
     error "Failed to install Homebrew"
@@ -256,7 +303,7 @@ if ! command -v brew &> /dev/null; then
   export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   success "Homebrew installed"
 else
-  success "Homebrew already installed"
+  success "Homebrew already installed (skipping)"
 fi
 
 # 3. Check/Install Ollama
@@ -274,14 +321,16 @@ if [ ! -x "$OLLAMA" ]; then
     exit 1
   }
   OLLAMA="/opt/homebrew/bin/ollama"
+  success "Ollama installed"
+else
+  success "Ollama already installed (skipping)"
 fi
-success "Ollama found at $OLLAMA"
 
 # 4. Create virtual environment
 echo ""
 echo "Setting up Python virtual environment..."
 if [ -d ".venv" ]; then
-  warning "Virtual environment already exists"
+  warning "Virtual environment already exists (skipping creation)"
 else
   "$PYTHON" -m venv .venv || {
     error "Failed to create virtual environment"
@@ -292,26 +341,30 @@ fi
 
 # 5. Install Python dependencies
 echo ""
-echo "Installing Python dependencies..."
+echo "Installing Python packages..."
 .venv/bin/python -m pip install --upgrade pip > /dev/null 2>&1 || true
 .venv/bin/pip install -r requirements.txt || {
   error "Failed to install dependencies"
   exit 1
 }
-success "Python dependencies installed"
+success "Python packages installed"
 
 # 6. Check/Download Ollama model
 echo ""
-echo "Checking Ollama model (qwen3:8b)..."
+echo "Processing Ollama models..."
+QWEN_INSTALLED=false
 if $OLLAMA list | grep -q "qwen3:8b"; then
-  success "Model qwen3:8b already downloaded"
+  QWEN_INSTALLED=true
+  OLLAMA_SIZE=$(du -sh ~/.ollama 2>/dev/null | awk '{print $1}')
+  success "Qwen3:8b model already installed (${OLLAMA_SIZE})"
 else
-  warning "Downloading qwen3:8b model (this may take a few minutes)..."
+  warning "Downloading qwen3:8b model (~5 GB, may take 10-30 minutes)..."
   $OLLAMA pull qwen3:8b || {
     error "Failed to download model"
     exit 1
   }
-  success "Model downloaded"
+  success "Qwen3:8b model downloaded"
+  OLLAMA_SIZE=$(du -sh ~/.ollama 2>/dev/null | awk '{print $1}')
 fi
 
 # 7. Disable Ollama cloud (privacy)
@@ -346,6 +399,21 @@ echo ""
 echo "=========================================="
 echo -e "${GREEN}Setup Complete!${NC}"
 echo "=========================================="
+echo ""
+echo "Installed components:"
+echo "  ✓ Python environment (.venv)"
+echo "  ✓ Python packages (mlx-whisper, etc.)"
+echo "  ✓ Ollama"
+if [ "$QWEN_INSTALLED" = true ]; then
+  echo "  ✓ Qwen3:8b model (${OLLAMA_SIZE})"
+else
+  OLLAMA_SIZE=$(du -sh ~/.ollama 2>/dev/null | awk '{print $1}')
+  echo "  ✓ Qwen3:8b model (${OLLAMA_SIZE})"
+fi
+echo ""
+echo "Storage used:"
+TOTAL_SIZE=$(du -sh ~/.ollama 2>/dev/null | awk '{print $1}')
+echo "  ~/.ollama: ${TOTAL_SIZE}"
 echo ""
 echo "To start the application, run:"
 echo "  ./Start\ Transcriptie.command"
