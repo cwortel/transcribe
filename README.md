@@ -2,6 +2,8 @@
 
 Een lokale Mac-app die audio en video omzet in een bewerkbare transcriptie met Whisper. Daarna kun je ondertitels opslaan of met Qwen een samenvatting maken. De verwerking gebeurt op je eigen Mac.
 
+![Lokale Transcriptie Interface](images/frontpage.png)
+
 Voor technische details en architectuurkeuzes, zie [ARCHITECTURE.md](ARCHITECTURE.md). Voor snelle start, zie [QUICKSTART.md](QUICKSTART.md).
 
 ## Vereisten
