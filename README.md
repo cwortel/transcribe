@@ -2,100 +2,30 @@
 
 Een lokale Mac-app die audio en video omzet in een bewerkbare transcriptie met Whisper. Daarna kun je ondertitels opslaan of met Qwen een samenvatting maken. De verwerking gebeurt op je eigen Mac.
 
-Projectcontext en besluiten om later verder te gaan staan in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). Dit is een samenvatting voor overdracht, geen volledige chat-export.
+Voor technische details en architectuurkeuzes, zie [ARCHITECTURE.md](ARCHITECTURE.md). Voor snelle start, zie [QUICKSTART.md](QUICKSTART.md).
 
-## Benodigd
+## Vereisten
 
-- Een Apple Silicon-Mac (M1 of nieuwer).
-- Een internetverbinding voor de eenmalige installatie en het downloaden van de modellen.
-- Python 3.12.
-- Homebrew, om Python en FFmpeg te installeren.
-- Ollama voor de lokale Qwen-samenvatting.
-- Enkele GB vrije schijfruimte voor de lokale modellen. Qwen 3 8B gebruikt ongeveer 5,2 GB.
+- Apple Silicon-Mac (M1 of nieuwer)
+- Ongeveer 5-6 GB vrije schijfruimte (voor modellen)
+- Internetverbinding (eenmalig, voor setup)
 
-## Eenmalig installeren
+## Snel starten
 
-Voer de stappen in volgorde uit. Open hiervoor **Terminal** (via Programma's > Hulpprogramma's > Terminal).
+1. **Setup** (eenmalig):
+   ```bash
+   ./setup.command
+   ```
+   Dit installeert alle afhankelijkheden automatisch (Homebrew, Ollama, Python-paketten, modellen).
 
-### 1. Installeer Homebrew, Python en FFmpeg
+2. **App starten**:
+   ```bash
+   ./Start\ Transcriptie.command
+   ```
+   De app opent in je browser op [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-Als Homebrew nog niet is geïnstalleerd, volg dan de installatie-instructies op [brew.sh](https://brew.sh). Open daarna Terminal en voer uit:
-
-```bash
-brew install python@3.12 ffmpeg
-```
-
-### 2. Maak de Python-omgeving en installeer Whisper
-
-Ga in Terminal naar de projectmap:
-
-```bash
-cd ~/Projects/Transcribe
-```
-
-Maak een aparte Python-omgeving aan en installeer de benodigde Whisper-software:
-
-```bash
-python3.12 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
-```
-
-Download nu het Whisper-model alvast terwijl je internet hebt. De app gebruikt dit model daarna lokaal en offline:
-
-```bash
-.venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='mlx-community/whisper-large-v3-turbo')"
-```
-
-Het downloaden kan even duren. Laat het Terminal-venster open totdat het commando klaar is.
-
-### 3. Installeer Ollama en het samenvattingsmodel
-
-1. Download en installeer Ollama voor Mac via [ollama.com/download](https://ollama.com/download).
-2. Open de Ollama-app en laat die actief.
-3. Open een nieuw Terminal-venster en download het model:
-
-```bash
-ollama pull qwen3:8b
-```
-
-Dit model is ongeveer 5,2 GB; het downloaden kan enige tijd duren.
-
-### 4. Schakel Ollama-cloud uit
-
-Om Ollama alleen lokaal te gebruiken, voer je dit uit in Terminal. Dit bewaart eventuele andere instellingen in het bestand:
-
-```bash
-python3 - <<'PY'
-import json
-from pathlib import Path
-
-settings = Path.home() / ".ollama" / "server.json"
-settings.parent.mkdir(parents=True, exist_ok=True)
-config = json.loads(settings.read_text()) if settings.exists() else {}
-config["disable_ollama_cloud"] = True
-settings.write_text(json.dumps(config, indent=2) + "\n")
-print("Ollama-cloud is uitgeschakeld. Herstart daarna Ollama.")
-PY
-```
-
-Sluit Ollama af en open het opnieuw om de instelling toe te passen.
-
-## De app starten
-
-1. Open in Finder de map `~/Projects/Transcribe`.
-2. Dubbelklik op `Start Transcriptie.command`.
-3. Als macOS vraagt of je het bestand wilt openen, kies **Open**.
-4. Laat het Terminal-venster open zolang je de app gebruikt. De app opent in je browser op [http://127.0.0.1:8765](http://127.0.0.1:8765).
-
-Je kunt de app ook vanuit Terminal starten:
-
-```bash
-cd ~/Projects/Transcribe
-./Start\ Transcriptie.command
-```
-
-Stop de app door in het Terminal-venster op **Control+C** te drukken.
+3. **App afsluiten**:
+   Druk **Control+C** in het Terminal-venster.
 
 ## Een opname transcriberen en samenvatten
 
@@ -111,11 +41,88 @@ De app kan gangbare audio- en videoformaten verwerken, waaronder M4A, MP3, WAV, 
 
 ## Problemen oplossen
 
-- **Whisper niet gevonden:** controleer of stap 2 is uitgevoerd en of `~/Projects/Transcribe/.venv/bin/mlx_whisper` bestaat.
-- **Model niet beschikbaar of offlinefout:** download het Whisper-model opnieuw met het commando in stap 2 terwijl je internetverbinding hebt.
-- **Ollama niet beschikbaar:** open de Ollama-app en controleer in Terminal met `ollama list` of `qwen3:8b` is geïnstalleerd.
-- **Ollama-cloud wordt gemeld:** controleer de instelling uit stap 4 en herstart Ollama.
-- **De browserpagina opent niet:** controleer of het Terminal-venster met de app nog open is en ga naar [http://127.0.0.1:8765](http://127.0.0.1:8765).
+### Setup problemen
+
+| Probleem | Oplossing |
+|----------|-----------|
+| "Python 3 not found" | Download Python van [python.org](https://www.python.org/downloads/macos/) en installeer het |
+| "Homebrew installation failed" | Controleer je internetverbinding; zie [brew.sh](https://brew.sh) voor systeemvereisten |
+| "Failed to install dependencies" | Voer `setup.command` opnieuw uit; controleer vrije schijfruimte (minimaal 6 GB) |
+| Model download is langzaam | De modellen zijn groot (~5 GB); dit kan 15-30 minuten duren afhankelijk van je internetsnelheid |
+
+### App problemen
+
+| Probleem | Oplossing |
+|----------|-----------|
+| "Kan niet starten op poort 8765" | Sluit een vorige sessie: zoek het Terminal-venster van de app en druk **Control+C** |
+| "Ollama niet bereikbaar" | Zorg dat `setup.command` volledig is afgerond; herstart de app |
+| "Whisper niet gevonden" | Voer `setup.command` opnieuw uit; controleer of `.venv/bin/mlx_whisper` bestaat |
+| "App opent niet in browser" | Zorg dat het Terminal-venster nog open is; ga naar [http://127.0.0.1:8765](http://127.0.0.1:8765) |
+| "Transcriptie is leeg of onvoltooid" | Controleer of het audio-/videobestand niet beschadigd is; probeer een ander formaat (MP3, WAV, MP4) |
+| "Samenvatting werkt niet" | Controleer of Ollama correct is ingesteld: voer `ollama list` uit in Terminal en controleer of `qwen3:8b` aanwezig is |
+
+### Transcriptie kwaliteit
+
+- **Whisper herkent Nederlands slecht**: Whisper werkt het beste met Nederlands van moedertaalsprekers; zware accenten kunnen problemen veroorzaken
+- **Foute woorden of voornaamwoorden**: Dit is normaal bij spraakherkenning; controleer en corrigeer altijd de transcriptie
+- **Hallucinaties of herhaling**: Wijzigingen in stille-instellingen kunnen helpen; zie Advanced Setup
+
+## Advanced Setup (handmatige installatie)
+
+Als `setup.command` niet werkt of je wilt stappen handmatig uitvoeren:
+
+### 1. Installeer Homebrew, Python en FFmpeg
+
+Open Terminal en voer uit:
+
+```bash
+# Installeer Homebrew (als nog niet geïnstalleerd)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Installeer Python 3.12 en FFmpeg
+brew install python@3.12 ffmpeg
+```
+
+### 2. Zet Python-omgeving op
+
+```bash
+cd ~/Projects/Transcribe
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/pip install -r requirements.txt
+```
+
+Download het Whisper-model:
+
+```bash
+.venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='mlx-community/whisper-large-v3-turbo')"
+```
+
+### 3. Installeer en configureer Ollama
+
+Download van [ollama.com/download](https://ollama.com/download).
+
+Download het Qwen-model:
+
+```bash
+ollama pull qwen3:8b
+```
+
+Schakel Ollama-cloud uit voor privacy:
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+settings = Path.home() / ".ollama" / "server.json"
+settings.parent.mkdir(parents=True, exist_ok=True)
+config = json.loads(settings.read_text()) if settings.exists() else {}
+config["disable_ollama_cloud"] = True
+settings.write_text(json.dumps(config, indent=2) + "\n")
+print("Ollama-cloud is uitgeschakeld.")
+PY
+```
 
 ## Ontwikkelen en testen
 
